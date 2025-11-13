@@ -5,17 +5,17 @@ import java.util.*;
 public class SitesB {
 
     static class DSU {
-        private Map<String, String> parent;
-        private Map<String, Integer> rank;
-        private Map<String, Integer> size;
+        private final Map<String, String> parent;
+        private final Map<String, Integer> rank;
+        private final Map<String, Integer> size;
 
-        DSU() {
+        public DSU() {
             parent = new HashMap<>();
             rank = new HashMap<>();
             size = new HashMap<>();
         }
 
-        void makeSet(String x) {
+        public void makeSet(String x) {
             if (!parent.containsKey(x)) {
                 parent.put(x, x);
                 rank.put(x, 0);
@@ -23,14 +23,14 @@ public class SitesB {
             }
         }
 
-        String find(String x) {
+        public String find(String x) {
             if (!parent.get(x).equals(x)) {
                 parent.put(x, find(parent.get(x))); // Path compression
             }
             return parent.get(x);
         }
 
-        void union(String x, String y) {
+        public void union(String x, String y) {
             String rootX = find(x);
             String rootY = find(y);
 
@@ -45,13 +45,21 @@ public class SitesB {
                 size.put(rootX, size.get(rootX) + size.get(rootY));
             } else {
                 parent.put(rootY, rootX);
-                rank.put(rootX, rank.get(rootX) + 1);
                 size.put(rootX, size.get(rootX) + size.get(rootY));
+                rank.put(rootX, rank.get(rootX) + 1);
             }
         }
 
-        int getSize(String x) {
+        public int getSize(String x) {
             return size.get(find(x));
+        }
+
+        public Collection<String> getAllRoots() {
+            Set<String> roots = new HashSet<>();
+            for (String site : parent.keySet()) {
+                roots.add(find(site));
+            }
+            return roots;
         }
     }
 
@@ -61,34 +69,33 @@ public class SitesB {
 
         while (true) {
             String line = scanner.nextLine();
-            if ("end".equals(line)) {
+            if (line.equals("end")) {
                 break;
             }
 
             String[] sites = line.split("\\+");
-            String site1 = sites[0].trim();
-            String site2 = sites[1].trim();
+            String site1 = sites[0];
+            String site2 = sites[1];
 
-            // Добавляем сайты в DSU
+            // Добавляем сайты в DSU если их еще нет
             dsu.makeSet(site1);
             dsu.makeSet(site2);
 
-            // Объединяем связанные сайты
+            // Объединяем сайты
             dsu.union(site1, site2);
         }
 
         // Собираем размеры кластеров
         Map<String, Integer> clusterSizes = new HashMap<>();
-        for (String site : dsu.parent.keySet()) {
-            String root = dsu.find(site);
+        for (String root : dsu.getAllRoots()) {
             clusterSizes.put(root, dsu.getSize(root));
         }
 
-        // Получаем уникальные размеры и сортируем
+        // Получаем размеры и сортируем их в порядке убывания
         List<Integer> sizes = new ArrayList<>(clusterSizes.values());
-        Collections.sort(sizes);
+        Collections.sort(sizes, Collections.reverseOrder());
 
-        // Вывод результата
+        // Выводим результат
         for (int i = 0; i < sizes.size(); i++) {
             System.out.print(sizes.get(i));
             if (i < sizes.size() - 1) {

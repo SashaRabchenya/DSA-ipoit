@@ -1,27 +1,23 @@
 package by.it.group410971.rabchenya.lesson10;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Queue;
+import java.util.*;
 
 public class MyPriorityQueue<E> implements Queue<E> {
 
-    private static final int DEFAULT_CAPACITY = 10;
-    private Object[] heap;
+    private E[] heap;
     private int size;
     private final Comparator<? super E> comparator;
 
     @SuppressWarnings("unchecked")
     public MyPriorityQueue() {
-        heap = new Object[DEFAULT_CAPACITY];
+        heap = (E[]) new Object[10];
         size = 0;
         comparator = null;
     }
 
     @SuppressWarnings("unchecked")
     public MyPriorityQueue(Comparator<? super E> comparator) {
-        heap = new Object[DEFAULT_CAPACITY];
+        heap = (E[]) new Object[10];
         size = 0;
         this.comparator = comparator;
     }
@@ -36,8 +32,7 @@ public class MyPriorityQueue<E> implements Queue<E> {
             return "[]";
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
+        StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < size; i++) {
             sb.append(heap[i]);
             if (i < size - 1) {
@@ -67,30 +62,17 @@ public class MyPriorityQueue<E> implements Queue<E> {
     }
 
     @Override
-    public boolean remove(Object o) {
-        for (int i = 0; i < size; i++) {
-            if ((o == null && heap[i] == null) ||
-                    (o != null && o.equals(heap[i]))) {
-                removeAt(i);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
     public E remove() {
         if (size == 0) {
-            throw new java.util.NoSuchElementException();
+            throw new NoSuchElementException();
         }
         return poll();
     }
 
     @Override
-    public boolean contains(Object o) {
+    public boolean contains(Object element) {
         for (int i = 0; i < size; i++) {
-            if ((o == null && heap[i] == null) ||
-                    (o != null && o.equals(heap[i]))) {
+            if (element == null ? heap[i] == null : element.equals(heap[i])) {
                 return true;
             }
         }
@@ -103,7 +85,10 @@ public class MyPriorityQueue<E> implements Queue<E> {
             throw new NullPointerException();
         }
 
-        ensureCapacity();
+        if (size == heap.length) {
+            resize();
+        }
+
         heap[size] = element;
         siftUp(size);
         size++;
@@ -116,12 +101,10 @@ public class MyPriorityQueue<E> implements Queue<E> {
             return null;
         }
 
-        @SuppressWarnings("unchecked")
-        E result = (E) heap[0];
-
+        E result = heap[0];
+        heap[0] = heap[size - 1];
+        heap[size - 1] = null;
         size--;
-        heap[0] = heap[size];
-        heap[size] = null;
 
         if (size > 0) {
             siftDown(0);
@@ -132,22 +115,15 @@ public class MyPriorityQueue<E> implements Queue<E> {
 
     @Override
     public E peek() {
-        if (size == 0) {
-            return null;
-        }
-        @SuppressWarnings("unchecked")
-        E result = (E) heap[0];
-        return result;
+        return (size == 0) ? null : heap[0];
     }
 
     @Override
     public E element() {
         if (size == 0) {
-            throw new java.util.NoSuchElementException();
+            throw new NoSuchElementException();
         }
-        @SuppressWarnings("unchecked")
-        E result = (E) heap[0];
-        return result;
+        return heap[0];
     }
 
     @Override
@@ -172,7 +148,7 @@ public class MyPriorityQueue<E> implements Queue<E> {
         }
 
         for (E element : c) {
-            offer(element);
+            add(element);
         }
         return true;
     }
@@ -180,34 +156,71 @@ public class MyPriorityQueue<E> implements Queue<E> {
     @Override
     public boolean removeAll(Collection<?> c) {
         boolean modified = false;
-        for (int i = size - 1; i >= 0; i--) {
-            if (c.contains(heap[i])) {
-                removeAt(i);
+        // Простая реализация - создаем новую кучу без удаляемых элементов
+        E[] newHeap = (E[]) new Object[heap.length];
+        int newSize = 0;
+
+        for (int i = 0; i < size; i++) {
+            if (!c.contains(heap[i])) {
+                newHeap[newSize++] = heap[i];
+            } else {
                 modified = true;
             }
         }
+
+        // Перестраиваем кучу
+        heap = newHeap;
+        size = newSize;
+
+        // Восстанавливаем свойства кучи
+        for (int i = (size / 2) - 1; i >= 0; i--) {
+            siftDown(i);
+        }
+
         return modified;
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
         boolean modified = false;
-        for (int i = size - 1; i >= 0; i--) {
-            if (!c.contains(heap[i])) {
-                removeAt(i);
+        // Простая реализация - создаем новую кучу только с сохраняемыми элементами
+        E[] newHeap = (E[]) new Object[heap.length];
+        int newSize = 0;
+
+        for (int i = 0; i < size; i++) {
+            if (c.contains(heap[i])) {
+                newHeap[newSize++] = heap[i];
+            } else {
                 modified = true;
             }
         }
+
+        // Перестраиваем кучу
+        heap = newHeap;
+        size = newSize;
+
+        // Восстанавливаем свойства кучи
+        for (int i = (size / 2) - 1; i >= 0; i--) {
+            siftDown(i);
+        }
+
         return modified;
     }
 
     // Вспомогательные методы для работы с кучей
+
     @SuppressWarnings("unchecked")
+    private void resize() {
+        E[] newHeap = (E[]) new Object[heap.length * 2];
+        System.arraycopy(heap, 0, newHeap, 0, size);
+        heap = newHeap;
+    }
+
     private void siftUp(int index) {
-        E element = (E) heap[index];
+        E element = heap[index];
         while (index > 0) {
-            int parentIndex = (index - 1) >>> 1;
-            E parent = (E) heap[parentIndex];
+            int parentIndex = (index - 1) / 2;
+            E parent = heap[parentIndex];
 
             if (compare(element, parent) >= 0) {
                 break;
@@ -219,19 +232,18 @@ public class MyPriorityQueue<E> implements Queue<E> {
         heap[index] = element;
     }
 
-    @SuppressWarnings("unchecked")
     private void siftDown(int index) {
-        E element = (E) heap[index];
-        int half = size >>> 1;
+        E element = heap[index];
+        int half = size / 2;
 
         while (index < half) {
-            int childIndex = (index << 1) + 1;
-            E child = (E) heap[childIndex];
+            int childIndex = (index * 2) + 1;
+            E child = heap[childIndex];
             int rightIndex = childIndex + 1;
 
-            if (rightIndex < size && compare(child, (E) heap[rightIndex]) > 0) {
+            if (rightIndex < size && compare(heap[rightIndex], child) < 0) {
                 childIndex = rightIndex;
-                child = (E) heap[childIndex];
+                child = heap[rightIndex];
             }
 
             if (compare(element, child) <= 0) {
@@ -249,41 +261,22 @@ public class MyPriorityQueue<E> implements Queue<E> {
         if (comparator != null) {
             return comparator.compare(a, b);
         } else {
-            Comparable<? super E> comparable = (Comparable<? super E>) a;
-            return comparable.compareTo(b);
-        }
-    }
-
-    private void ensureCapacity() {
-        if (size == heap.length) {
-            int newCapacity = heap.length * 2;
-            Object[] newHeap = new Object[newCapacity];
-            System.arraycopy(heap, 0, newHeap, 0, size);
-            heap = newHeap;
-        }
-    }
-
-    private void removeAt(int index) {
-        size--;
-        if (index == size) {
-            heap[index] = null;
-        } else {
-            heap[index] = heap[size];
-            heap[size] = null;
-            siftDown(index);
-            if (heap[index] == heap[size]) {
-                siftUp(index);
-            }
+            return ((Comparable<? super E>) a).compareTo(b);
         }
     }
 
     /////////////////////////////////////////////////////////////////////////
-    //////        Остальные методы - необязательные к реализации     ///////
+    //////               Остальные методы - заглушки                ///////
     /////////////////////////////////////////////////////////////////////////
 
     @Override
+    public boolean remove(Object o) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Iterator<E> iterator() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -297,7 +290,8 @@ public class MyPriorityQueue<E> implements Queue<E> {
     @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         if (a.length < size) {
-            return (T[]) toArray();
+            a = (T[]) java.lang.reflect.Array.newInstance(
+                    a.getClass().getComponentType(), size);
         }
         System.arraycopy(heap, 0, a, 0, size);
         if (a.length > size) {
@@ -305,10 +299,4 @@ public class MyPriorityQueue<E> implements Queue<E> {
         }
         return a;
     }
-
-    // Эти методы не реализованы, так как не требуются по заданию
-    // но они должны быть объявлены для реализации интерфейса Queue
-
-    // Остальные методы интерфейса Collection и Queue
-    // (не требуются по заданию, но должны быть объявлены)
 }

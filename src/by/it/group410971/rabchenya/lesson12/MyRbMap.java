@@ -1,32 +1,32 @@
 package by.it.group410971.rabchenya.lesson12;
 
-import java.util.Comparator;
-import java.util.SortedMap;
+import java.util.*;
 
 public class MyRbMap implements SortedMap<Integer, String> {
 
     private static final boolean RED = true;
     private static final boolean BLACK = false;
 
-    private static class Node {
+    private static class RbNode {
         Integer key;
         String value;
-        Node left, right;
+        RbNode left;
+        RbNode right;
         boolean color;
-        int size;
 
-        Node(Integer key, String value, boolean color) {
+        RbNode(Integer key, String value, boolean color) {
             this.key = key;
             this.value = value;
             this.color = color;
-            this.size = 1;
         }
     }
 
-    private Node root;
+    private RbNode root;
+    private int size;
 
     public MyRbMap() {
         root = null;
+        size = 0;
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ public class MyRbMap implements SortedMap<Integer, String> {
         StringBuilder sb = new StringBuilder("{");
         inOrderToString(root, sb);
         if (sb.length() > 1) {
-            sb.setLength(sb.length() - 2);
+            sb.setLength(sb.length() - 2); // Удаляем последнюю запятую с пробелом
         }
         sb.append("}");
         return sb.toString();
@@ -65,21 +65,17 @@ public class MyRbMap implements SortedMap<Integer, String> {
         if (key == null) {
             throw new NullPointerException();
         }
-
-        if (!(key instanceof Integer)) {
-            return null;
-        }
-
         if (!containsKey(key)) {
             return null;
         }
 
-        String[] removedValue = new String[1];
-        root = remove(root, (Integer) key, removedValue);
+        String removedValue = get(key);
+        root = delete(root, (Integer) key);
         if (root != null) {
             root.color = BLACK;
         }
-        return removedValue[0];
+        size--;
+        return removedValue;
     }
 
     @Override
@@ -88,21 +84,14 @@ public class MyRbMap implements SortedMap<Integer, String> {
             throw new NullPointerException();
         }
 
-        if (!(key instanceof Integer)) {
-            return null;
-        }
-
-        return get(root, (Integer) key);
+        RbNode node = get(root, (Integer) key);
+        return node != null ? node.value : null;
     }
 
     @Override
     public boolean containsKey(Object key) {
         if (key == null) {
             throw new NullPointerException();
-        }
-
-        if (!(key instanceof Integer)) {
-            return false;
         }
 
         return get(root, (Integer) key) != null;
@@ -113,33 +102,29 @@ public class MyRbMap implements SortedMap<Integer, String> {
         if (value == null) {
             throw new NullPointerException();
         }
-
-        if (!(value instanceof String)) {
-            return false;
-        }
-
-        return containsValue(root, (String) value);
+        return containsValue(root, value.toString());
     }
 
     @Override
     public int size() {
-        return size(root);
+        return size;
     }
 
     @Override
     public void clear() {
         root = null;
+        size = 0;
     }
 
     @Override
     public boolean isEmpty() {
-        return root == null;
+        return size == 0;
     }
 
     @Override
     public Integer firstKey() {
         if (root == null) {
-            throw new java.util.NoSuchElementException();
+            throw new NoSuchElementException();
         }
         return min(root).key;
     }
@@ -147,43 +132,30 @@ public class MyRbMap implements SortedMap<Integer, String> {
     @Override
     public Integer lastKey() {
         if (root == null) {
-            throw new java.util.NoSuchElementException();
+            throw new NoSuchElementException();
         }
         return max(root).key;
     }
 
     @Override
     public SortedMap<Integer, String> headMap(Integer toKey) {
-        if (toKey == null) {
-            throw new NullPointerException();
-        }
-
-        MyRbMap result = new MyRbMap();
-        headMap(root, toKey, result);
-        return result;
+        MyRbMap headMap = new MyRbMap();
+        headMap(root, toKey, headMap);
+        return headMap;
     }
 
     @Override
     public SortedMap<Integer, String> tailMap(Integer fromKey) {
-        if (fromKey == null) {
-            throw new NullPointerException();
-        }
-
-        MyRbMap result = new MyRbMap();
-        tailMap(root, fromKey, result);
-        return result;
-    }
-
-    @Override
-    public Comparator<? super Integer> comparator() {
-        return null; // Естественный порядок для Integer
+        MyRbMap tailMap = new MyRbMap();
+        tailMap(root, fromKey, tailMap);
+        return tailMap;
     }
 
     /////////////////////////////////////////////////////////////////////////
     //////               Вспомогательные методы КЧ-дерева           ///////
     /////////////////////////////////////////////////////////////////////////
 
-    private void inOrderToString(Node node, StringBuilder sb) {
+    private void inOrderToString(RbNode node, StringBuilder sb) {
         if (node != null) {
             inOrderToString(node.left, sb);
             sb.append(node.key).append("=").append(node.value).append(", ");
@@ -191,51 +163,38 @@ public class MyRbMap implements SortedMap<Integer, String> {
         }
     }
 
-    private boolean isRed(Node node) {
+    private boolean isRed(RbNode node) {
         return node != null && node.color == RED;
     }
 
-    private int size(Node node) {
-        return node == null ? 0 : node.size;
-    }
-
-    private void updateSize(Node node) {
-        if (node != null) {
-            node.size = size(node.left) + size(node.right) + 1;
-        }
-    }
-
-    private Node rotateLeft(Node h) {
-        Node x = h.right;
+    private RbNode rotateLeft(RbNode h) {
+        RbNode x = h.right;
         h.right = x.left;
         x.left = h;
         x.color = h.color;
         h.color = RED;
-        updateSize(h);
-        updateSize(x);
         return x;
     }
 
-    private Node rotateRight(Node h) {
-        Node x = h.left;
+    private RbNode rotateRight(RbNode h) {
+        RbNode x = h.left;
         h.left = x.right;
         x.right = h;
         x.color = h.color;
         h.color = RED;
-        updateSize(h);
-        updateSize(x);
         return x;
     }
 
-    private void flipColors(Node h) {
-        h.color = RED;
-        h.left.color = BLACK;
-        h.right.color = BLACK;
+    private void flipColors(RbNode h) {
+        h.color = !h.color;
+        if (h.left != null) h.left.color = !h.left.color;
+        if (h.right != null) h.right.color = !h.right.color;
     }
 
-    private Node put(Node h, Integer key, String value, String[] oldValue) {
+    private RbNode put(RbNode h, Integer key, String value, String[] oldValue) {
         if (h == null) {
-            return new Node(key, value, RED);
+            size++;
+            return new RbNode(key, value, RED);
         }
 
         int cmp = key.compareTo(h.key);
@@ -260,88 +219,10 @@ public class MyRbMap implements SortedMap<Integer, String> {
             flipColors(h);
         }
 
-        updateSize(h);
         return h;
     }
 
-    private Node remove(Node h, Integer key, String[] removedValue) {
-        if (key.compareTo(h.key) < 0) {
-            if (!isRed(h.left) && !isRed(h.left.left)) {
-                h = moveRedLeft(h);
-            }
-            h.left = remove(h.left, key, removedValue);
-        } else {
-            if (isRed(h.left)) {
-                h = rotateRight(h);
-            }
-            if (key.compareTo(h.key) == 0 && (h.right == null)) {
-                removedValue[0] = h.value;
-                return null;
-            }
-            if (!isRed(h.right) && !isRed(h.right.left)) {
-                h = moveRedRight(h);
-            }
-            if (key.compareTo(h.key) == 0) {
-                Node x = min(h.right);
-                h.key = x.key;
-                h.value = x.value;
-                removedValue[0] = x.value;
-                h.right = removeMin(h.right);
-            } else {
-                h.right = remove(h.right, key, removedValue);
-            }
-        }
-        return balance(h);
-    }
-
-    private Node removeMin(Node h) {
-        if (h.left == null) {
-            return null;
-        }
-
-        if (!isRed(h.left) && !isRed(h.left.left)) {
-            h = moveRedLeft(h);
-        }
-
-        h.left = removeMin(h.left);
-        return balance(h);
-    }
-
-    private Node moveRedLeft(Node h) {
-        flipColors(h);
-        if (isRed(h.right.left)) {
-            h.right = rotateRight(h.right);
-            h = rotateLeft(h);
-            flipColors(h);
-        }
-        return h;
-    }
-
-    private Node moveRedRight(Node h) {
-        flipColors(h);
-        if (isRed(h.left.left)) {
-            h = rotateRight(h);
-            flipColors(h);
-        }
-        return h;
-    }
-
-    private Node balance(Node h) {
-        if (isRed(h.right)) {
-            h = rotateLeft(h);
-        }
-        if (isRed(h.left) && isRed(h.left.left)) {
-            h = rotateRight(h);
-        }
-        if (isRed(h.left) && isRed(h.right)) {
-            flipColors(h);
-        }
-
-        updateSize(h);
-        return h;
-    }
-
-    private String get(Node node, Integer key) {
+    private RbNode get(RbNode node, Integer key) {
         while (node != null) {
             int cmp = key.compareTo(node.key);
             if (cmp < 0) {
@@ -349,13 +230,13 @@ public class MyRbMap implements SortedMap<Integer, String> {
             } else if (cmp > 0) {
                 node = node.right;
             } else {
-                return node.value;
+                return node;
             }
         }
         return null;
     }
 
-    private boolean containsValue(Node node, String value) {
+    private boolean containsValue(RbNode node, String value) {
         if (node == null) {
             return false;
         }
@@ -365,40 +246,73 @@ public class MyRbMap implements SortedMap<Integer, String> {
         return containsValue(node.left, value) || containsValue(node.right, value);
     }
 
-    private Node min(Node node) {
-        while (node.left != null) {
+    private RbNode min(RbNode node) {
+        while (node != null && node.left != null) {
             node = node.left;
         }
         return node;
     }
 
-    private Node max(Node node) {
-        while (node.right != null) {
+    private RbNode max(RbNode node) {
+        while (node != null && node.right != null) {
             node = node.right;
         }
         return node;
     }
 
-    private void headMap(Node node, Integer toKey, MyRbMap result) {
+    private void headMap(RbNode node, Integer toKey, MyRbMap result) {
         if (node == null) {
             return;
-        }
-        if (node.key.compareTo(toKey) < 0) {
-            result.put(node.key, node.value);
-            headMap(node.right, toKey, result);
         }
         headMap(node.left, toKey, result);
+        if (node.key.compareTo(toKey) < 0) {
+            result.put(node.key, node.value);
+        }
+        headMap(node.right, toKey, result);
     }
 
-    private void tailMap(Node node, Integer fromKey, MyRbMap result) {
+    private void tailMap(RbNode node, Integer fromKey, MyRbMap result) {
         if (node == null) {
             return;
         }
+        tailMap(node.left, fromKey, result);
         if (node.key.compareTo(fromKey) >= 0) {
             result.put(node.key, node.value);
-            tailMap(node.left, fromKey, result);
         }
         tailMap(node.right, fromKey, result);
+    }
+
+    // Упрощенная реализация удаления для красно-черного дерева
+    private RbNode delete(RbNode node, Integer key) {
+        if (node == null) {
+            return null;
+        }
+
+        int cmp = key.compareTo(node.key);
+        if (cmp < 0) {
+            node.left = delete(node.left, key);
+        } else if (cmp > 0) {
+            node.right = delete(node.right, key);
+        } else {
+            if (node.left == null) {
+                return node.right;
+            } else if (node.right == null) {
+                return node.left;
+            }
+            RbNode minNode = min(node.right);
+            node.key = minNode.key;
+            node.value = minNode.value;
+            node.right = deleteMin(node.right);
+        }
+        return node;
+    }
+
+    private RbNode deleteMin(RbNode node) {
+        if (node.left == null) {
+            return node.right;
+        }
+        node.left = deleteMin(node.left);
+        return node;
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -406,26 +320,32 @@ public class MyRbMap implements SortedMap<Integer, String> {
     /////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void putAll(java.util.Map<? extends Integer, ? extends String> m) {
+    public void putAll(Map<? extends Integer, ? extends String> m) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public java.util.Set<Integer> keySet() {
-        return null;
+    public Set<Integer> keySet() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public java.util.Collection<String> values() {
-        return null;
+    public Collection<String> values() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public java.util.Set<Entry<Integer, String>> entrySet() {
-        return null;
+    public Set<Entry<Integer, String>> entrySet() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Comparator<? super Integer> comparator() {
+        return null; // естественный порядок
     }
 
     @Override
     public SortedMap<Integer, String> subMap(Integer fromKey, Integer toKey) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 }
